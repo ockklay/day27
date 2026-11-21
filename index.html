@@ -234,6 +234,10 @@ body{background:transparent!important}
  html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
  .wrap{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 }
+
+/* ---- en-tête translucide sur toutes les photos + fond qui déborde sous la barre du bas de l'iPhone ---- */
+header{backdrop-filter:blur(10px) saturate(1.1);-webkit-backdrop-filter:blur(10px) saturate(1.1)}
+html::before{content:"";position:fixed;left:0;right:0;top:-150px;bottom:-150px;z-index:-1;background:inherit;pointer-events:none}
 </style>
 </head>
 <body>
@@ -295,7 +299,7 @@ body{background:transparent!important}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 15h58</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 16h05</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -877,7 +881,7 @@ function themeOf(b) {
   const h = b.h, s = b.s;
   const v = {
     '--lane': hsl(h, s, 62, .62), '--card': hsl(h, s, 85, .86), '--cardHover': hsl(h, s, 92, .94),
-    '--hdr': hsl(h, s + 6, 15, .8), '--hdrInk': '#f4f7fb',
+    '--hdr': hsl(h, s + 6, 15, .5), '--hdrInk': '#f4f7fb',
     '--ink': hsl(h, 40, 12), '--mute': hsl(h, 22, 30), '--line': hsl(h, s, 52),
     '--acc': hsl(h, s + 14, 28), '--btn': hsl(h, s + 12, 80), '--btnInk': '#111111',
     '--dlg': hsl(h, s, 90), '--field': hsl(h, s, 96, .8)
