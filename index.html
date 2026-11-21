@@ -300,7 +300,7 @@ header{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 17h20</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 17h35</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -922,10 +922,8 @@ function applyBg() {
   const b = bgOf(lsGet('tableau-bg') || 'cervin');
   document.body.style.backgroundImage = bgCss(b);
   document.body.style.backgroundPosition = b.pos || 'center';
-  let wp = document.getElementById('wp');
-  if (!wp) { wp = document.createElement('div'); wp.id = 'wp'; document.documentElement.insertBefore(wp, document.body); }
-  wp.style.backgroundImage = bgCss(b);
-  wp.style.backgroundPosition = b.pos || 'center';
+  document.documentElement.style.backgroundImage = bgCss(b);
+  document.documentElement.style.backgroundPosition = b.pos || 'center';
   edgeColor(b);
   const th = themeOf(b);
   PAL = th;
