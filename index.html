@@ -305,7 +305,7 @@ header{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 18h55</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 19h30</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -383,6 +383,7 @@ let dragId = null;
 
 function render() {
   applyName();
+  if ((!SYN.refresh || synOpened) && recHorizon()) save();
   const sel = $('sel');
   sel.innerHTML = '';
   [...S.boards].sort((a, b) => (a.date ? 1 : 0) - (b.date ? 1 : 0) || (a.date || '').localeCompare(b.date || '')).forEach(b => sel.append(h('option', { value: b.id }, bname(b))));
@@ -522,9 +523,10 @@ function openCard(col, card) {
 function applyEdit() {
   const c = editing.card;
   c.min = Math.max(0, parseFloat($('eM').value) || 0);
-  syncRec(c);
   delete c._new;
   c.t = $('eT').value.trim() || c.t || 'Sans titre'; c.d = $('eD').value; c.due = $('eU').value; c.c = '#111111'; c.url = $('eL').value.trim(); c.urg = $('eUr').checked;
+  syncRec(c);
+  recHorizon();
   const want = $('eK').checked, tid = $('eCol').value;
   if (want !== eKInit) { if (want !== !!c.done) { setDone(editing.col, c, want); if (want) cheer(c); } }
   else if (tid && tid !== eColInit) {
@@ -851,6 +853,21 @@ function recMatch(t, date) {
   if (!(t.days || []).includes(d.getDay())) return false;
   const mon = x => { const y = new Date(x); y.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return y; };
   return Math.round((mon(d) - mon(st)) / (7 * DAY)) % ev === 0;
+}
+/* crée à l'avance les tableaux des 45 prochains jours où une carte récurrente doit apparaître */
+function recHorizon() {
+  const today = todayKey(); let changed = false;
+  S.rec.forEach(t => {
+    t.made = (t.made || []).filter(k => k >= today);
+    for (let i = 0; i <= 7; i++) {
+      const dt = new Date(today + 'T00:00'); dt.setDate(dt.getDate() + i);
+      const k = ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
+      if (t.made.includes(k) || !recMatch(t, k)) continue;
+      t.made.push(k); changed = true;
+      applyRec(dayBoard(k));
+    }
+  });
+  return changed;
 }
 function applyRec(b) {
   if (!b.date) return false;
