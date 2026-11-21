@@ -325,7 +325,7 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 21h20</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 22h00</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -403,7 +403,7 @@ let dragId = null;
 
 function render() {
   applyName();
-  if ((!SYN.refresh || synOpened) && recHorizon()) save();
+  if ((!SYN.refresh || synOpened) && (dueSweep() | recHorizon())) save();
   const sel = $('sel');
   sel.innerHTML = '';
   [...S.boards].sort((a, b) => (a.date ? 1 : 0) - (b.date ? 1 : 0) || (a.date || '').localeCompare(b.date || '')).forEach(b => sel.append(h('option', { value: b.id }, bname(b))));
@@ -877,6 +877,47 @@ function recMatch(t, date) {
   if (!(t.days || []).includes(d.getDay())) return false;
   const mon = x => { const y = new Date(x); y.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return y; };
   return Math.round((mon(d) - mon(st)) / (7 * DAY)) % ev === 0;
+}
+/* une carte avec échéance réapparaît chaque jour (7 jours d'avance) jusqu'à l'échéance, ou jusqu'à ce qu'elle soit terminée */
+function dueSweep() {
+  let changed = false;
+  const today = todayKey();
+  const all = [];
+  S.boards.forEach(b => b.cols.forEach(c => c.cards.forEach(k => all.push({ b, c, k }))));
+  const addDays = (key, n) => { const d = new Date(key + 'T00:00'); d.setDate(d.getDate() + n); return ymd(d.getFullYear(), d.getMonth(), d.getDate()); };
+  all.forEach(({ b, k }) => {
+    if (k.dueOf || !b.date || !k.due || k.due <= b.date) return;
+    const members = all.filter(m => m.k === k || m.k.dueOf === k.id);
+    // échéance modifiée : on repart de zéro
+    if (k.dueFor !== k.due) {
+      members.forEach(m => { if (m.k !== k && !m.k.done) { m.c.cards = m.c.cards.filter(x => x !== m.k); } });
+      k.dueFor = k.due; k.dueMade = []; changed = true;
+    }
+    const live = all.filter(m => m.k === k || m.k.dueOf === k.id);
+    const dones = live.filter(m => m.k.done).map(m => m.b.date).sort();
+    const stop = dones.length ? dones[0] : null;          // premier jour où elle est terminée
+    // jours après la fin : on retire les copies non terminées
+    if (stop) live.forEach(m => {
+      if (m.k !== k && !m.k.done && m.b.date > stop) {
+        m.c.cards = m.c.cards.filter(x => x !== m.k);
+        k.dueMade = (k.dueMade || []).filter(d => d !== m.b.date); changed = true;
+      }
+    });
+    // champs à jour dans les copies
+    live.forEach(m => { const x = m.k; if (x !== k && !x.done && (x.t !== k.t || x.d !== k.d || x.url !== k.url || x.urg !== k.urg || x.min !== k.min)) { Object.assign(x, { t: k.t, d: k.d, url: k.url, urg: k.urg, min: k.min }); changed = true; } });
+    if (stop) return;
+    // création des copies manquantes
+    const last = k.due < addDays(today, 7) ? k.due : addDays(today, 7);
+    let d = addDays(b.date, 1) < today ? today : addDays(b.date, 1);
+    const have = new Set(live.map(m => m.b.date));
+    for (; d <= last; d = addDays(d, 1)) {
+      if (have.has(d) || (k.dueMade || []).includes(d)) continue;
+      const nb = dayBoard(d), todo = findCol(nb, 'à faire') || findCol(nb, 'a faire') || nb.cols[0];
+      todo.cards.push({ id: uid(), t: k.t, d: k.d, c: k.c, due: k.due, url: k.url, urg: k.urg, min: k.min, dueOf: k.id });
+      (k.dueMade = k.dueMade || []).push(d); changed = true;
+    }
+  });
+  return changed;
 }
 /* crée à l'avance les tableaux des 45 prochains jours où une carte récurrente doit apparaître */
 function recHorizon() {
