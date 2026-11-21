@@ -904,7 +904,7 @@ applyBg();
 /* ---- Synchronisation Supabase ---- */
 var SYN = {};
 try { SYN = JSON.parse(localStorage.getItem('tableau-sync')) || {}; } catch (e) { SYN = {}; }
-var synBusy = false, synAgain = false, synTimer = null, synApplying = false, synMsg = '', synErr_ = false;
+var synOpened = false, synBusy = false, synAgain = false, synTimer = null, synApplying = false, synMsg = '', synErr_ = false;
 const synSave = () => lsSet('tableau-sync', JSON.stringify(SYN));
 function cfg() {
   const c = window.SYNC_CONFIG || {};
@@ -1005,6 +1005,7 @@ async function synNow() {
   } catch (e) {
     synStatus(/fetch|network|Load failed/i.test(e.message) ? 'Hors ligne : la synchronisation reprendra dès le retour du réseau.' : e.message, true);
   }
+  if (!synOpened) { synOpened = true; S.cur = dayBoard(todayKey()).id; save(); render(); }
   synBusy = false;
   if (synAgain) { synAgain = false; setTimeout(synNow, 300); }
 }
@@ -1070,9 +1071,14 @@ S.rec = S.rec || [];
 S.boards.forEach(b => { if (b.name === 'Mon tableau') b.name = 'Ma journée'; b.cols.forEach(c => { c.cards = c.cards.filter(k => !k._new); }); });
 /* à l'ouverture (et au réveil d'un nouveau jour) : on arrive sur le tableau du jour, « Ma journée » */
 let lastDay = todayKey();
-S.cur = dayBoard(lastDay).id;
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && todayKey() !== lastDay) { lastDay = todayKey(); S.cur = dayBoard(lastDay).id; save(); render(); }
+/* avec la synchro, on attend la 1re synchronisation avant de créer le tableau du jour (sinon chaque appareil crée le sien et ils se contredisent) */
+if (!SYN.refresh) S.cur = dayBoard(lastDay).id;
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && todayKey() !== lastDay) {
+    lastDay = todayKey();
+    if (SYN.refresh) await synNow();
+    S.cur = dayBoard(lastDay).id; save(); render();
+  }
 });
 S.boards.forEach(ensureDone);
 save();
