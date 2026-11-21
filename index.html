@@ -325,7 +325,7 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 21h00</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 21h10</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -597,7 +597,9 @@ $('nvCol').onclick = async () => {
   $('nv').close();
   const n = await ask('Nom de la nouvelle colonne', { input: true, ok: 'Créer' });
   if (!n || !n.trim()) return;
-  board().cols.push({ id: uid(), name: n.trim(), cards: [] }); save(); render();
+  const b = board(), nc = { id: uid(), name: n.trim(), cards: [] }, dc = findCol(b, 'termin'), i = dc ? b.cols.indexOf(dc) : -1;
+  if (i > -1) b.cols.splice(i, 0, nc); else b.cols.push(nc);
+  save(); render();
 };
 $('nvBoard').onclick = async () => {
   $('nv').close();
