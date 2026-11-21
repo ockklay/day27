@@ -325,7 +325,7 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 21h10</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 21h20</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -451,9 +451,11 @@ function colEl(col) {
   add.addEventListener('click', newCard);
   add.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); newCard(); } });
   const isEn = col === findCol(board(), 'en cours'), isFin = col === doneCol();
-  if (isEn || isFin) return h('section', { class: 'col' }, h('div', { class: 'ch' }, name, h('span', { class: 'n' }, String(col.cards.length)), del), list);
+  const isTodo = col === (findCol(board(), 'à faire') || findCol(board(), 'a faire'));
+  const keep = isEn || isFin || isTodo ? '' : del;
+  if (isEn || isFin) return h('section', { class: 'col' }, h('div', { class: 'ch' }, name, h('span', { class: 'n' }, String(col.cards.length)), keep), list);
   return h('section', { class: 'col' },
-    h('div', { class: 'ch' }, name, h('span', { class: 'n' }, String(col.cards.length)), del),
+    h('div', { class: 'ch' }, name, h('span', { class: 'n' }, String(col.cards.length)), keep),
     list, h('div', { class: 'add' }, add));
 }
 
