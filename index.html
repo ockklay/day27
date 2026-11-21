@@ -222,7 +222,7 @@ dialog{max-height:92vh;max-height:92dvh}
 /* ---- iPhone : la fenêtre se cale au-dessus du clavier, le champ date ne déborde plus ---- */
 dialog input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;min-height:40px}
 @media(max-width:820px){
- dialog[open]{top:var(--vvt,12px);bottom:auto;margin:0 auto;max-height:calc(var(--vvh,100dvh) - 24px)!important}
+ dialog[open]{top:calc(var(--vvt,12px) + env(safe-area-inset-top));bottom:auto;margin:0 auto;max-height:calc(var(--vvh,100dvh) - 24px - env(safe-area-inset-top))!important;scroll-padding-top:60px;scroll-padding-bottom:90px}
 }
 </style>
 </head>
@@ -949,7 +949,8 @@ applyBg();
 /* iPhone : suit la zone réellement visible (au-dessus du clavier) pour placer les fenêtres */
 if (window.visualViewport) {
   const vvFit = () => { const v = window.visualViewport, r = document.documentElement.style;
-    r.setProperty('--vvh', v.height + 'px'); r.setProperty('--vvt', (v.offsetTop + 12) + 'px'); };
+    r.setProperty('--vvh', v.height + 'px'); r.setProperty('--vvt', (v.offsetTop + 12) + 'px');
+    const d = document.getElementById('dlg'); if (d && d.open && document.activeElement && document.activeElement.id === 'eT') d.scrollTop = 0; };
   window.visualViewport.addEventListener('resize', vvFit); window.visualViewport.addEventListener('scroll', vvFit); vvFit();
 }
 
