@@ -257,6 +257,11 @@ header h1{width:100%;margin:0;text-align:center}
  .synS{display:none}
  .brk{margin-top:-12px}
 }
+/* Mac, fenêtre moyenne : les 3 colonnes côte à côte, alignées sur la grille de boutons */
+@media(min-width:560px) and (max-width:820px) and (pointer:fine){
+ main{flex-direction:row;flex-wrap:nowrap;align-items:flex-start;gap:6px}
+ .col,.newcol{flex:1 1 0;min-width:0;width:auto}
+}
 #wp{position:fixed;left:0;top:0;width:100%;height:130vh;z-index:-1;pointer-events:none;background-color:#1a283c;background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 </head>
@@ -320,7 +325,7 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 20h40</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 21h00</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
