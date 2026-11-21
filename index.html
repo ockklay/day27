@@ -234,6 +234,10 @@ body{background:transparent!important}
  html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
  .wrap{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
  html{bottom:-120px;height:auto}
+ /* tâches terminées : petites pastilles cochées, côte à côte, à la largeur du titre */
+ .list:has(>.card.done){flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:8px}
+ .card.done{width:fit-content;max-width:100%;padding:8px 12px}
+ .card.done .d>*:not(.ok){display:none}
  body::after{content:'';position:absolute;left:0;right:0;bottom:0;height:150px;z-index:0;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--edge,#1a283c))}
 }
 
@@ -301,7 +305,7 @@ header{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 17h50</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 18h45</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
