@@ -273,6 +273,10 @@ header h1{width:100%;margin:0;text-align:center}
 .subadd input{flex:1;min-width:0}
 .subadd .btn{flex:none;min-width:44px;font-weight:700}
 .cprog{font-weight:600}
+/* écran moyen en largeur (tablette, iPhone Duo ouvert en paysage) : les 3 colonnes se partagent la place */
+@media(min-width:821px) and (max-width:1200px){
+ .col,.newcol{flex:1 1 0;min-width:0}
+}
 #wp{position:fixed;left:0;top:0;width:100%;height:130vh;z-index:-1;pointer-events:none;background-color:#1a283c;background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 </head>
@@ -339,7 +343,7 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 22 nov. 10h40</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 22 nov. 18h40</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -357,7 +361,7 @@ header h1{width:100%;margin:0;text-align:center}
   <p class="hint">Par mois : le même jour du mois que la date de départ (le dernier jour du mois si celui-ci est plus court).</p>
   <label for="rcEnd">Fin</label>
   <div class="row"><select id="rcEnd"><option value="never">Jamais</option><option value="date">Le</option></select><input type="date" id="rcD"></div>
-  <div class="acts"><button class="btn main" id="rcOk">Valider</button><button class="btn" id="rcX">Annuler</button><span class="sp"></span><button class="btn" id="rcOff">Ne plus répéter</button></div>
+  <div class="acts"><button class="btn main" id="rcOk">Valider</button><button class="btn" id="rcX">Annuler</button><span class="sp"></span><button class="btn" id="rcOff" title="Les cartes déjà créées pour les jours à venir restent">Arrêter la récurrence</button><button class="btn del" id="rcOffDel">Arrêter et supprimer les cartes futures</button></div>
 </dialog>
 
 <dialog id="nv">
@@ -417,7 +421,7 @@ let dragId = null;
 
 function render() {
   applyName();
-  if ((!SYN.refresh || synOpened) && (dueSweep() | recHorizon())) save();
+  if ((!SYN.refresh || synOpened) && (tidyDays() | dueSweep() | recHorizon())) save();
   const sel = $('sel');
   sel.innerHTML = '';
   [...S.boards].sort((a, b) => (a.date ? 1 : 0) - (b.date ? 1 : 0) || (a.date || '').localeCompare(b.date || '')).forEach(b => sel.append(h('option', { value: b.id }, bname(b))));
@@ -554,6 +558,7 @@ function openCard(col, card) {
   $('eL').value = card.url || ''; $('eK').checked = !!card.done; $('eUr').checked = !!card.urg;
   const rt = S.rec.find(r => r.id === card.recId); editDays = new Set(rt ? (rt.days || []) : []);
   editRule = rt ? { unit: rt.unit || 'week', every: rt.every || 1, until: rt.until || '' } : { unit: 'week', every: 1, until: '' };
+  editPurge = false;
   paintDows();
   editSubs = (card.subs || []).map(x => ({ id: x.id || uid(), t: x.t, d: !!x.d }));
   subsWasAll = editSubs.length > 0 && editSubs.every(x => x.d);
@@ -895,16 +900,33 @@ $('rcOk').onclick = () => {
   if (u === 'week' && !editDays.size) editDays = new Set([new Date(recStart() + 'T00:00').getDay()]);
   $('rc').close(); paintDows();
 };
-$('rcOff').onclick = () => { editRule = { unit: 'week', every: 1, until: '' }; editDays = new Set(); $('rc').close(); paintDows(); };
+var editPurge = false;
+$('rcOff').onclick = () => { editPurge = false; editRule = { unit: 'week', every: 1, until: '' }; editDays = new Set(); $('rc').close(); paintDows(); };
+$('rcOffDel').onclick = () => { editPurge = true; editRule = { unit: 'week', every: 1, until: '' }; editDays = new Set(); $('rc').close(); paintDows(); };
+/* retire les copies à venir (non terminées) d'une récurrence, pour qu'elles soient refaites ou supprimées */
+function purgeRec(id, keep) {
+  const today = todayKey();
+  S.boards.forEach(b => {
+    if (!b.date || b.date < today) return;
+    b.cols.forEach(col => { col.cards = col.cards.filter(k => !(k.recId === id && k !== keep && !k.done)); });
+    if (!b.cols.some(col => col.cards.includes(keep))) b.gen = (b.gen || []).filter(g => g !== id);
+  });
+  // tableaux futurs devenus vides (colonnes d'origine, aucune carte) : on les retire du menu
+  const std = ['à faire', 'en cours', 'terminé'];
+  S.boards = S.boards.filter(b => !(b.date && b.date > today && b.id !== S.cur && b.cols.length === 3 && b.cols.every((col, i) => !col.cards.length && col.name.trim().toLowerCase() === std[i]) && (b.gen || []).length === 0));
+}
 function syncRec(c) {
   let t = S.rec.find(r => r.id === c.recId);
-  if (editRule.unit === 'week' && !editDays.size) { if (t) S.rec = S.rec.filter(r => r !== t); delete c.recId; return; }
+  if (editRule.unit === 'week' && !editDays.size) { if (t) { if (editPurge) purgeRec(t.id, c); S.rec = S.rec.filter(r => r !== t); } delete c.recId; return; }
   if (!t) {
     const b = board();
     t = { id: uid(), start: b.date || todayKey() };
     S.rec.push(t); c.recId = t.id;
     if (b.date) b.gen = (b.gen || []).concat(t.id);
   }
+  const sig = r => JSON.stringify([r.unit, r.every, r.until || '', [...(r.days || [])].sort()]);
+  const before = sig(t), after = sig({ unit: editRule.unit, every: editRule.every, until: editRule.until, days: [...editDays] });
+  if (before !== after && t.unit) { purgeRec(t.id, c); t.made = []; }
   Object.assign(t, { t: c.t, d: c.d, c: c.c, url: c.url, urg: !!c.urg, min: c.min || 0, subs: (c.subs || []).map(x => ({ t: x.t })), days: [...editDays], unit: editRule.unit, every: editRule.every, until: editRule.until });
 }
 function recMatch(t, date) {
@@ -920,7 +942,39 @@ function recMatch(t, date) {
   const mon = x => { const y = new Date(x); y.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return y; };
   return Math.round((mon(d) - mon(st)) / (7 * DAY)) % ev === 0;
 }
-/* une carte avec échéance réapparaît chaque jour (7 jours d'avance) jusqu'à l'échéance, ou jusqu'à ce qu'elle soit terminée */
+/* ménage : on garde l'avant-veille, la veille, aujourd'hui et les 3 jours suivants */
+function shiftDay(key, n) { const d = new Date(key + 'T00:00'); d.setDate(d.getDate() + n); return ymd(d.getFullYear(), d.getMonth(), d.getDate()); }
+function tidyDays() {
+  const today = todayKey(), oldest = shiftDay(today, -2), newest = shiftDay(today, 3);
+  let changed = false;
+  // 1. tableaux plus anciens que l'avant-veille
+  const n0 = S.boards.length;
+  S.boards = S.boards.filter(b => !b.date || b.date >= oldest || b.id === S.cur);
+  if (S.boards.length !== n0) changed = true;
+  // 2. cartes générées automatiquement au-delà de J+3 : on les retire, elles reviendront le moment venu
+  const std = ['à faire', 'en cours', 'terminé'];
+  S.boards.forEach(b => {
+    if (!b.date || b.date <= newest) return;
+    b.cols.forEach(col => {
+      const keep = [];
+      col.cards.forEach(k => {
+        const tpl = k.recId && S.rec.find(r => r.id === k.recId);
+        const gen = !k.done && (k.dueOf || (tpl && tpl.start !== b.date));
+        if (!gen) { keep.push(k); return; }
+        changed = true;
+        if (tpl) tpl.made = (tpl.made || []).filter(d => d !== b.date);
+        if (k.dueOf) S.boards.forEach(bb => bb.cols.forEach(cc => cc.cards.forEach(o => { if (o.id === k.dueOf) o.dueMade = (o.dueMade || []).filter(d => d !== b.date); })));
+      });
+      col.cards = keep;
+    });
+    if (b.cols.every(c => !c.cards.length)) b.gen = [];
+  });
+  const n1 = S.boards.length;
+  S.boards = S.boards.filter(b => !(b.date && b.date > newest && b.id !== S.cur && b.cols.length === 3 && b.cols.every((c, i) => !c.cards.length && c.name.trim().toLowerCase() === std[i])));
+  if (S.boards.length !== n1) changed = true;
+  return changed;
+}
+/* une carte avec échéance réapparaît chaque jour (3 jours d'avance) jusqu'à l'échéance, ou jusqu'à ce qu'elle soit terminée */
 function dueSweep() {
   let changed = false;
   const today = todayKey();
@@ -949,7 +1003,7 @@ function dueSweep() {
     live.forEach(m => { const x = m.k; if (x !== k && !x.done && (x.t !== k.t || x.d !== k.d || x.url !== k.url || x.urg !== k.urg || x.min !== k.min)) { Object.assign(x, { t: k.t, d: k.d, url: k.url, urg: k.urg, min: k.min }); changed = true; } });
     if (stop) return;
     // création des copies manquantes
-    const last = k.due < addDays(today, 7) ? k.due : addDays(today, 7);
+    const last = k.due < addDays(today, 3) ? k.due : addDays(today, 3);
     let d = addDays(b.date, 1) < today ? today : addDays(b.date, 1);
     const have = new Set(live.map(m => m.b.date));
     for (; d <= last; d = addDays(d, 1)) {
@@ -966,7 +1020,7 @@ function recHorizon() {
   const today = todayKey(); let changed = false;
   S.rec.forEach(t => {
     t.made = (t.made || []).filter(k => k >= today);
-    for (let i = 0; i <= 7; i++) {
+    for (let i = 0; i <= 3; i++) {
       const dt = new Date(today + 'T00:00'); dt.setDate(dt.getDate() + i);
       const k = ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
       if (t.made.includes(k) || !recMatch(t, k)) continue;
