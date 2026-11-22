@@ -343,7 +343,9 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 22 nov. 18h40</p>
+    <p class="hint" style="margin-top:20px">Repartir de zéro</p>
+    <div class="quick"><button class="btn del" id="bWipe">Effacer toutes les cartes…</button></div>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 22 nov. 18h55</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -642,6 +644,13 @@ function ask(msg, o) {
 $('sel').onchange = e => { S.cur = e.target.value; save(); render(); };
 $('bNew').onclick = () => $('nv').showModal();
 $('nvX').onclick = () => $('nv').close();
+$('bWipe').onclick = async () => {
+  const ok = await ask('Effacer TOUTES les cartes, tous les tableaux et toutes les récurrences, sur tous tes appareils ? C’est définitif.', { ok: 'Tout effacer' });
+  if (!ok) return;
+  S = { cur: '', name: S.name, rec: [], boards: [] };
+  S.cur = dayBoard(todayKey()).id;
+  $('set').close(); save(); render(); toast('Tout est effacé');
+};
 $('nvCol').onclick = async () => {
   $('nv').close();
   const n = await ask('Nom de la nouvelle colonne', { input: true, ok: 'Créer' });
