@@ -262,6 +262,17 @@ header h1{width:100%;margin:0;text-align:center}
  main{flex-direction:row;flex-wrap:nowrap;align-items:flex-start;gap:6px}
  .col,.newcol{flex:1 1 0;min-width:0;width:auto}
 }
+/* sous-tâches */
+.subs{display:flex;flex-direction:column;gap:6px}
+.subs .sub{display:flex;align-items:center;gap:8px}
+.subs .sub input[type=checkbox]{width:20px;height:20px;flex:none;margin:0}
+.subs .sub input[type=text]{flex:1;min-width:0}
+.subs .sub.on input[type=text]{text-decoration:line-through;opacity:.6}
+.subs .sub .x{flex:none}
+.subadd{display:flex;gap:8px;margin:6px 0 10px}
+.subadd input{flex:1;min-width:0}
+.subadd .btn{flex:none;min-width:44px;font-weight:700}
+.cprog{font-weight:600}
 #wp{position:fixed;left:0;top:0;width:100%;height:130vh;z-index:-1;pointer-events:none;background-color:#1a283c;background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 </head>
@@ -293,6 +304,9 @@ header h1{width:100%;margin:0;text-align:center}
   <select id="eCol"></select></div>
   <label for="eD">Description</label>
   <textarea id="eD"></textarea>
+  <label>Sous-tâches</label>
+  <div id="eSubs" class="subs"></div>
+  <div class="subadd"><input type="text" id="eSubNew" placeholder="Ajouter une sous-tâche…" enterkeyhint="done"><button class="btn" id="eSubAdd" type="button" aria-label="Ajouter la sous-tâche">+</button></div>
   <label for="eU">Échéance</label>
   <input type="date" id="eU">
   <label for="eL">Lien</label>
@@ -325,7 +339,7 @@ header h1{width:100%;margin:0;text-align:center}
   <div id="setRest">
     <p class="hint">Synchronisation entre tes appareils</p>
     <div id="synBox"></div>
-    <p class="hint" style="margin-top:20px">Version de l'appli : 21 nov. 22h00</p>
+    <p class="hint" style="margin-top:20px">Version de l'appli : 22 nov. 10h40</p>
   </div>
   <div class="acts"><button class="btn main" id="setX">Fermer</button></div>
 </dialog>
@@ -495,6 +509,7 @@ function cardEl(col, card) {
   }
   if (card.done) meta.unshift(h('span', { class: 'ok' }, card.early ? 'Terminé en avance' : 'Terminé'));
   if (card.urg && !card.done) meta.unshift(h('span', { class: 'urg' }, 'Urgent'));
+  if (card.subs && card.subs.length) meta.push(h('span', { class: 'cprog' }, '☑ ' + card.subs.filter(x => x.d).length + '/' + card.subs.length));
   if (card.d) meta.push(h('span', {}, 'Description'));
   if (card.recId) meta.push(h('span', {}, '↻ Répété'));
   const url = normUrl(card.url);
@@ -540,13 +555,40 @@ function openCard(col, card) {
   const rt = S.rec.find(r => r.id === card.recId); editDays = new Set(rt ? (rt.days || []) : []);
   editRule = rt ? { unit: rt.unit || 'week', every: rt.every || 1, until: rt.until || '' } : { unit: 'week', every: 1, until: '' };
   paintDows();
+  editSubs = (card.subs || []).map(x => ({ id: x.id || uid(), t: x.t, d: !!x.d }));
+  subsWasAll = editSubs.length > 0 && editSubs.every(x => x.d);
+  $('eSubNew').value = ''; paintSubs();
   $('dlg').showModal();
 }
+var editSubs = [], subsWasAll = false;
+function paintSubs() {
+  const box = $('eSubs'); box.innerHTML = '';
+  editSubs.forEach((sb, i) => {
+    const ck = h('input', { type: 'checkbox', 'aria-label': 'Sous-tâche faite' }); ck.checked = sb.d;
+    const tx = h('input', { type: 'text', value: sb.t, 'aria-label': 'Sous-tâche' });
+    const row = h('div', { class: 'sub' + (sb.d ? ' on' : '') }, ck, tx,
+      h('button', { class: 'x', type: 'button', title: 'Supprimer la sous-tâche', onclick: () => { editSubs.splice(i, 1); paintSubs(); } }, '×'));
+    ck.addEventListener('change', () => { sb.d = ck.checked; row.classList.toggle('on', sb.d); });
+    tx.addEventListener('input', () => { sb.t = tx.value; });
+    box.append(row);
+  });
+}
+function addSub() {
+  const v = $('eSubNew').value.trim(); if (!v) return;
+  editSubs.push({ id: uid(), t: v, d: false }); $('eSubNew').value = ''; paintSubs(); $('eSubNew').focus();
+}
+$('eSubAdd').onclick = addSub;
+$('eSubNew').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addSub(); } });
+const freshSubs = a => (a || []).map(x => ({ id: uid(), t: x.t, d: false }));
 function applyEdit() {
   const c = editing.card;
   c.min = Math.max(0, parseFloat($('eM').value) || 0);
   delete c._new;
   c.t = $('eT').value.trim() || c.t || 'Sans titre'; c.d = $('eD').value; c.due = $('eU').value; c.c = '#111111'; c.url = $('eL').value.trim(); c.urg = $('eUr').checked;
+  { const v = $('eSubNew').value.trim(); if (v) { editSubs.push({ id: uid(), t: v, d: false }); $('eSubNew').value = ''; } }
+  c.subs = editSubs.filter(x => x.t.trim()).map(x => ({ id: x.id, t: x.t.trim(), d: !!x.d }));
+  if (!c.subs.length) delete c.subs;
+  else if (!subsWasAll && c.subs.every(x => x.d) && !c.done) $('eK').checked = true;
   syncRec(c);
   recHorizon();
   const want = $('eK').checked, tid = $('eCol').value;
@@ -809,7 +851,7 @@ $('dGo').onclick = () => {
   applyEdit();
   keys.forEach(k => {
     const b = dayBoard(k), todo = findCol(b, 'à faire') || findCol(b, 'a faire') || b.cols[0];
-    todo.cards.push({ id: uid(), t: src.t, d: src.d, c: src.c, due: k, url: src.url || '', urg: !!src.urg, min: src.min || 0 });
+    todo.cards.push({ id: uid(), t: src.t, d: src.d, c: src.c, due: k, url: src.url || '', urg: !!src.urg, min: src.min || 0, subs: freshSubs(src.subs) });
   });
   $('dup').close(); save(); render();
   toast('Carte dupliquée sur ' + keys.length + (keys.length > 1 ? ' jours' : ' jour'));
@@ -863,7 +905,7 @@ function syncRec(c) {
     S.rec.push(t); c.recId = t.id;
     if (b.date) b.gen = (b.gen || []).concat(t.id);
   }
-  Object.assign(t, { t: c.t, d: c.d, c: c.c, url: c.url, urg: !!c.urg, min: c.min || 0, days: [...editDays], unit: editRule.unit, every: editRule.every, until: editRule.until });
+  Object.assign(t, { t: c.t, d: c.d, c: c.c, url: c.url, urg: !!c.urg, min: c.min || 0, subs: (c.subs || []).map(x => ({ t: x.t })), days: [...editDays], unit: editRule.unit, every: editRule.every, until: editRule.until });
 }
 function recMatch(t, date) {
   if (date < t.start || (t.until && date > t.until)) return false;
@@ -913,7 +955,7 @@ function dueSweep() {
     for (; d <= last; d = addDays(d, 1)) {
       if (have.has(d) || (k.dueMade || []).includes(d)) continue;
       const nb = dayBoard(d), todo = findCol(nb, 'à faire') || findCol(nb, 'a faire') || nb.cols[0];
-      todo.cards.push({ id: uid(), t: k.t, d: k.d, c: k.c, due: k.due, url: k.url, urg: k.urg, min: k.min, dueOf: k.id });
+      todo.cards.push({ id: uid(), t: k.t, d: k.d, c: k.c, due: k.due, url: k.url, urg: k.urg, min: k.min, dueOf: k.id, subs: freshSubs(k.subs) });
       (k.dueMade = k.dueMade || []).push(d); changed = true;
     }
   });
@@ -941,7 +983,7 @@ function applyRec(b) {
     if (!recMatch(t, b.date) || (b.gen || []).includes(t.id)) return;
     b.gen = (b.gen || []).concat(t.id);
     const todo = findCol(b, 'à faire') || findCol(b, 'a faire') || b.cols[0];
-    todo.cards.push({ id: uid(), t: t.t, d: t.d, c: t.c, due: b.date, url: t.url, urg: t.urg, min: t.min, recId: t.id });
+    todo.cards.push({ id: uid(), t: t.t, d: t.d, c: t.c, due: b.date, url: t.url, urg: t.urg, min: t.min, recId: t.id, subs: freshSubs(t.subs) });
     added = true;
   });
   return added;
